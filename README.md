@@ -470,7 +470,7 @@ OpenWiki supports thirteen providers. The onboarding default is OpenAI with `gpt
 | **GitHub Copilot**                                           | GitHub CLI session                      |
 | **OpenRouter**                                               | `OPENROUTER_API_KEY`                    |
 | **Nebius / Fireworks / Baseten / NVIDIA NIM**                | Provider API key                        |
-| **OpenAI-compatible** (LiteLLM, Ollama, LM Studio, gateways) | Base URL + key                          |
+| **OpenAI-compatible** (LiteLLM, Ollama, LM Studio, gateways) | Base URL + key or Microsoft Entra ID    |
 
 <details>
 <summary><b>GitHub Copilot</b></summary>
@@ -592,7 +592,24 @@ OPENAI_COMPATIBLE_BASE_URL=http://localhost:1234/v1
 OPENWIKI_MODEL_ID=your-loaded-model-id
 ```
 
-Some local servers ignore the API key value, but OpenWiki still requires `OPENAI_COMPATIBLE_API_KEY` because the client expects one.
+Some local servers ignore the API key value, but OpenWiki still requires `OPENAI_COMPATIBLE_API_KEY` in the default `api-key` authentication mode.
+
+**Microsoft Entra ID gateways.** Set `OPENAI_COMPATIBLE_AUTH=entra-id` to send an Entra access token instead of an API key. Azure Identity obtains and caches tokens and refreshes them before expiry on subsequent requests, including during long `--init` runs. No API key or localhost proxy is required. Both Chat Completions and Responses, including tool calls and streaming, use the same authentication callback.
+
+```bash
+export OPENWIKI_PROVIDER=openai-compatible
+export OPENAI_COMPATIBLE_AUTH=entra-id
+export OPENAI_COMPATIBLE_BASE_URL=https://your-gateway.example.com/openai/v1
+export OPENAI_COMPATIBLE_ENTRA_SCOPE=api://your-gateway-app-id/.default
+export OPENWIKI_MODEL_ID=your-gateway-model-name
+openwiki code --init
+```
+
+Set the scope to the resource your gateway accepts; it cannot be inferred from the gateway URL. If omitted, the scope defaults to `https://cognitiveservices.azure.com/.default` for Azure OpenAI. Entra mode requires an HTTPS base URL without embedded credentials. An existing `OPENAI_COMPATIBLE_API_KEY` is ignored in this mode. The default `api-key` mode remains unchanged; other authentication-mode values produce an error.
+
+Authentication uses Azure `DefaultAzureCredential`: for local testing, run `az login`; in CI, configure managed identity, workload identity (`AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, and `AZURE_FEDERATED_TOKEN_FILE`), or service-principal environment credentials. Keep credentials in your CI secret store. The identity must have permission to call the gateway for the configured scope. For Azure OpenAI, grant the appropriate Azure role, such as Cognitive Services OpenAI User.
+
+On GitHub Actions, configure `azure/login` with OIDC before running OpenWiki and grant `id-token: write`; setting `AZURE_CLIENT_ID` and `AZURE_TENANT_ID` alone does not establish authentication. The generated workflow preserves the Entra mode and scope and includes a reminder to configure identity, but you must supply the login step and your organization's federation settings. OpenWiki does not persist Entra access tokens or Azure identity credentials.
 
 **Streaming-only gateways.** Some gateways serve only the streaming transport: a non-streaming request is either rejected outright (`Stream must be set to true`) or answered with HTTP 200 and empty content, which leaves you with a blank wiki and no error. OpenWiki issues non-streaming requests internally, so force the streaming transport for those endpoints:
 

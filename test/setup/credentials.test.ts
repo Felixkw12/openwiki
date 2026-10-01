@@ -14,8 +14,15 @@ import {
   resolveStepStatus,
 } from "../../src/setup/credentials.tsx";
 import type { OpenWikiOnboardingConfig } from "../../src/setup/onboarding.ts";
+import {
+  credentialStep,
+  needsCredentialStep,
+} from "../../src/setup/credentials/steps.ts";
+import { getCredentialSetupDetail } from "../../src/setup/credentials/format.ts";
 
 const ENV_KEYS = [
+  "OPENAI_COMPATIBLE_AUTH",
+  "OPENAI_COMPATIBLE_API_KEY",
   "AWS_ACCESS_KEY_ID",
   "AWS_DEFAULT_REGION",
   "AWS_REGION",
@@ -50,6 +57,15 @@ afterEach(() => {
 });
 
 describe("needsCredentialSetup", () => {
+  test("Entra mode skips key collection and describes delegated authentication", () => {
+    process.env.OPENAI_COMPATIBLE_AUTH = "entra-id";
+    delete process.env.OPENAI_COMPATIBLE_API_KEY;
+    expect(credentialStep("openai-compatible")).toBeNull();
+    expect(needsCredentialStep("openai-compatible")).toBe(false);
+    expect(getCredentialSetupDetail("openai-compatible")).toContain(
+      "checked on first request",
+    );
+  });
   test("requires provider setup for an invalid configured provider", () => {
     process.env.OPENWIKI_PROVIDER = "bogus";
     process.env.OPENROUTER_API_KEY = "sk-or-v1-placeholder";

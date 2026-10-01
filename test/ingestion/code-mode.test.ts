@@ -881,6 +881,23 @@ describe("ensureCodeModeRepoSetup workflow provider block", () => {
     );
   });
 
+  test("preserves keyless Entra auth and custom scope in CI", async () => {
+    const workflow = await generateWorkflow({
+      OPENWIKI_PROVIDER: "openai-compatible",
+      OPENAI_COMPATIBLE_AUTH: "entra-id",
+      OPENAI_COMPATIBLE_ENTRA_SCOPE: "api://gateway/.default",
+    });
+    expect(workflow).toContain("OPENAI_COMPATIBLE_AUTH: entra-id");
+    expect(workflow).toContain(
+      'OPENAI_COMPATIBLE_ENTRA_SCOPE: "api://gateway/.default"',
+    );
+    expect(workflow).not.toContain("OPENAI_COMPATIBLE_API_KEY");
+    expect(workflow).toContain("Configure unattended Azure Identity");
+    expect(() => {
+      parse(workflow);
+    }).not.toThrow();
+  });
+
   test("carries the streaming opt-in into the scheduled run", async () => {
     // A gateway that only serves SSE would otherwise return empty content in
     // CI and commit a blank wiki, with the local run still looking healthy.

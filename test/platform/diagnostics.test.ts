@@ -1,5 +1,27 @@
-import { describe, expect, test } from "vitest";
-import { isAuthError } from "../../src/platform/diagnostics.ts";
+import { describe, expect, test, vi } from "vitest";
+import {
+  isAuthError,
+  sanitizeDiagnosticText,
+} from "../../src/platform/diagnostics.ts";
+
+test("redacts Azure identity secrets from diagnostic text", () => {
+  vi.stubEnv("AZURE_CLIENT_SECRET", "fake-azure-client-secret");
+  vi.stubEnv(
+    "AZURE_CLIENT_CERTIFICATE_PASSWORD",
+    "fake-azure-certificate-password",
+  );
+  try {
+    expect(
+      sanitizeDiagnosticText(
+        "failed: fake-azure-client-secret fake-azure-certificate-password",
+      ),
+    ).toBe(
+      "failed: [REDACTED:AZURE_CLIENT_SECRET] [REDACTED:AZURE_CLIENT_CERTIFICATE_PASSWORD]",
+    );
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
 
 describe("isAuthError", () => {
   test("classifies 401/403 status codes (number or string) as auth errors", () => {

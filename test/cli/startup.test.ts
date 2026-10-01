@@ -22,11 +22,15 @@ import {
   OPENAI_CHATGPT_REFRESH_TOKEN_ENV_KEY,
   OPENROUTER_API_KEY_ENV_KEY,
   OPENWIKI_PROVIDER_ENV_KEY,
+  OPENAI_COMPATIBLE_AUTH_ENV_KEY,
+  OPENAI_COMPATIBLE_API_KEY_ENV_KEY,
 } from "../../src/config/constants.ts";
 import { ClaimsStore } from "../../src/claims/brains/code/store.ts";
 
 const execFileAsync = promisify(execFile);
 const MANAGED_ENV_KEYS = [
+  OPENAI_COMPATIBLE_AUTH_ENV_KEY,
+  OPENAI_COMPATIBLE_API_KEY_ENV_KEY,
   AWS_ACCESS_KEY_ID_ENV_KEY,
   AWS_DEFAULT_REGION_ENV_KEY,
   AWS_REGION_ENV_KEY,
@@ -104,6 +108,16 @@ function updatePrintCommand(
     ...overrides,
   };
 }
+
+test("non-interactive Entra runs do not require an API key", async () => {
+  process.env[OPENWIKI_PROVIDER_ENV_KEY] = "openai-compatible";
+  process.env[OPENAI_COMPATIBLE_AUTH_ENV_KEY] = "entra-id";
+  delete process.env[OPENAI_COMPATIBLE_API_KEY_ENV_KEY];
+  const command = updatePrintCommand({ command: "init" });
+  expect(await resolveStartupCommand(command, { isStdinTTY: false })).toEqual(
+    command,
+  );
+});
 
 function setEnv(key: string, value: string | undefined): void {
   if (value === undefined) {

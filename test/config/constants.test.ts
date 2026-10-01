@@ -41,6 +41,8 @@ import {
   resolveOpenAiCompatibleReasoningEffortSupported,
   resolveOpenAiCompatibleStreaming,
   resolveOpenAiCompatibleUseResponsesApi,
+  resolveOpenAICompatibleAuthMode,
+  resolveOpenAICompatibleEntraScope,
   resolveOpenRouterMaxTokens,
   resolveOpenRouterProviderOnly,
   resolveProviderBaseUrl,
@@ -55,6 +57,50 @@ import {
   getReasoningCapability,
   resolveReasoningConfig,
 } from "../../src/config/reasoning.ts";
+
+describe("OpenAI-compatible Entra configuration", () => {
+  test("defaults to API-key auth and the Azure OpenAI scope", () => {
+    expect(resolveOpenAICompatibleAuthMode({})).toBe("api-key");
+    expect(
+      resolveOpenAICompatibleAuthMode({ OPENAI_COMPATIBLE_AUTH: " " }),
+    ).toBe("api-key");
+    expect(resolveOpenAICompatibleEntraScope({})).toBe(
+      "https://cognitiveservices.azure.com/.default",
+    );
+    expect(getMissingProviderEnvKey("openai-compatible", {})).toBe(
+      "OPENAI_COMPATIBLE_API_KEY",
+    );
+  });
+
+  test("accepts keyless Entra with a custom scope", () => {
+    const env = {
+      OPENAI_COMPATIBLE_AUTH: " Entra-ID ",
+      OPENAI_COMPATIBLE_ENTRA_SCOPE: " api://gateway/.default ",
+    };
+    expect(resolveOpenAICompatibleAuthMode(env)).toBe("entra-id");
+    expect(resolveOpenAICompatibleEntraScope(env)).toBe(
+      "api://gateway/.default",
+    );
+    expect(providerRequiresApiKey("openai-compatible", env)).toBe(false);
+    expect(getMissingProviderEnvKey("openai-compatible", env)).toBeNull();
+    expect(providerRequiresApiKey("openai", env)).toBe(true);
+    expect(getMissingProviderEnvKey("copilot", env)).toBe("COPILOT_API_KEY");
+  });
+
+  test("rejects invalid modes even when an API key is present", () => {
+    const env = {
+      OPENAI_COMPATIBLE_AUTH: "entraid",
+      OPENAI_COMPATIBLE_API_KEY: "placeholder",
+    };
+    expect(() => resolveOpenAICompatibleAuthMode(env)).toThrow(
+      /must be one of/u,
+    );
+    expect(() => getMissingProviderEnvKey("openai-compatible", env)).toThrow(
+      /must be one of/u,
+    );
+    expect(getMissingProviderEnvKey("openai", env)).toBe("OPENAI_API_KEY");
+  });
+});
 
 describe("isValidModelId", () => {
   test("accepts normal provider/model ids", () => {

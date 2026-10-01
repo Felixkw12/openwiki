@@ -83,6 +83,16 @@ describe("parseEnv", () => {
 });
 
 describe("formatEnv", () => {
+  test("manages and round-trips non-secret Entra configuration", () => {
+    const env = {
+      OPENAI_COMPATIBLE_AUTH: "entra-id",
+      OPENAI_COMPATIBLE_ENTRA_SCOPE: "api://gateway/.default",
+    };
+    expect(MANAGED_ENV_KEYS).toContain("OPENAI_COMPATIBLE_AUTH");
+    expect(MANAGED_ENV_KEYS).toContain("OPENAI_COMPATIBLE_ENTRA_SCOPE");
+    expect(parseEnv(formatEnv(env))).toEqual(env);
+    expect(MANAGED_ENV_KEYS).not.toContain("AZURE_CLIENT_SECRET");
+  });
   test("quotes and escapes values, terminating with a newline", () => {
     expect(formatEnv({ OPENAI_API_KEY: "abc" })).toBe('OPENAI_API_KEY="abc"\n');
     expect(formatEnv({ OPENAI_API_KEY: 'a"b\\c\nd' })).toBe(

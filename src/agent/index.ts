@@ -8,6 +8,7 @@ import { ChatBedrockConverse } from "@langchain/aws";
 import { ChatGoogle } from "@langchain/google/node";
 import { SqliteSaver } from "@langchain/langgraph-checkpoint-sqlite";
 import { ChatOpenAI } from "@langchain/openai";
+import { createEntraTokenProvider } from "./entra-auth.js";
 import { ChatOpenRouter } from "@langchain/openrouter";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { Event as ProtocolEvent } from "@langchain/protocol";
@@ -104,6 +105,10 @@ import {
   NVIDIA_BASE_URL_ENV_KEY,
   OPENAI_BASE_URL_ENV_KEY,
   OPENAI_COMPATIBLE_BASE_URL_ENV_KEY,
+  OPENAI_COMPATIBLE_AUTH_ENV_KEY,
+  OPENAI_COMPATIBLE_ENTRA_SCOPE_ENV_KEY,
+  providerUsesEntraId,
+  resolveOpenAICompatibleEntraScope,
   OPENAI_COMPATIBLE_STREAMING_ENV_KEY,
   OPENROUTER_API_KEY_ENV_KEY,
   OPENROUTER_BASE_URL,
@@ -1306,7 +1311,9 @@ export function createModel(
   }
 
   return new ChatOpenAI({
-    apiKey: getProviderApiKey(provider),
+    apiKey: providerUsesEntraId(provider)
+      ? createEntraTokenProvider(baseURL, resolveOpenAICompatibleEntraScope())
+      : getProviderApiKey(provider),
     configuration,
     model: modelId,
     useResponsesApi: chatOpenAiUsesResponsesApi,
@@ -2751,6 +2758,8 @@ export function formatEnvironmentDebugValue(
   if (
     key === OPENWIKI_MODEL_ID_ENV_KEY ||
     key === OPENWIKI_PROVIDER_ENV_KEY ||
+    key === OPENAI_COMPATIBLE_AUTH_ENV_KEY ||
+    key === OPENAI_COMPATIBLE_ENTRA_SCOPE_ENV_KEY ||
     key === OPENWIKI_MAX_OUTPUT_TOKENS_ENV_KEY ||
     key === OPENWIKI_STREAM_IDLE_TIMEOUT_ENV_KEY ||
     key === OPENWIKI_PROVIDER_RETRY_ATTEMPTS_ENV_KEY ||

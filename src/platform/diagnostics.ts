@@ -51,6 +51,8 @@ export function sanitizeDiagnosticText(value: string): string {
     ANTHROPIC_API_KEY_ENV_KEY,
     OPENROUTER_API_KEY_ENV_KEY,
     "LANGSMITH_API_KEY",
+    "AZURE_CLIENT_SECRET",
+    "AZURE_CLIENT_CERTIFICATE_PASSWORD",
   ]) {
     const secret = process.env[key];
 
