@@ -581,6 +581,14 @@ OPENWIKI_MODEL_ID=openai/gpt-5.5
 ```
 
 ```bash
+# EU-hosted gateway (for example Opper, which serves 700+ models behind one key)
+OPENWIKI_PROVIDER=openai-compatible
+OPENAI_COMPATIBLE_API_KEY=your-opper-key
+OPENAI_COMPATIBLE_BASE_URL=https://api.opper.ai/v3/compat
+OPENWIKI_MODEL_ID=claude-sonnet-4-6
+```
+
+```bash
 # Ollama, after `ollama serve` and `ollama pull llama3.2`
 OPENWIKI_PROVIDER=openai-compatible
 OPENAI_COMPATIBLE_API_KEY=ollama
