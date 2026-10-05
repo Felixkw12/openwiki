@@ -15,6 +15,8 @@ tags:
 sources:
   - id: openwiki-source-a953060a04ccefcf777de48e
     resource: repo://src/agent/index.ts
+  - id: openwiki-source-8a4d154074ac83bc638a4d89
+    resource: repo://src/auth/external-cli-auth.ts
   - id: openwiki-source-278e7e180eac811fc1a24f7a
     resource: repo://src/config/constants.ts
   - id: openwiki-source-c2770ac037a7f4b0116a0dc5
@@ -27,14 +29,22 @@ sources:
     resource: repo://src/platform/diagnostics.ts
   - id: openwiki-source-27fbd70857f0fae28185fe91
     resource: repo://src/platform/windows-acl.ts
+  - id: openwiki-source-c35800ddf00768a1fa848d13
+    resource: repo://src/setup/credentials/persistence.ts
+  - id: openwiki-source-b6012bb523844d86d43df530
+    resource: repo://test/agent/redaction.test.ts
   - id: openwiki-source-5fc87e9739dab52c4e447110
     resource: repo://test/config/constants.test.ts
+  - id: openwiki-source-3737521c173cbd93a21dceff
+    resource: repo://test/config/copilot-provider.test.ts
   - id: openwiki-source-3782823f29993efcdedd20ac
     resource: repo://test/config/env-behavior.test.ts
-generated: { by: "openwiki/0.5.2", at: "2026-09-23T08:09:37.122Z" }
+  - id: openwiki-source-00d6392196034c8ea0fb3e1b
+    resource: repo://test/setup/credentials.test.ts
+generated: { by: "openwiki/0.7.0", at: "2026-10-05T08:18:01.656Z" }
 verified:
-  - by: openwiki/0.5.2
-    at: 2026-09-23T08:09:37.122Z
+  - by: openwiki/0.7.0
+    at: 2026-10-05T08:18:01.656Z
 ---
 
 # Configuration and Environment
@@ -88,6 +98,15 @@ newer `OPENWIKI_PAGE_CONCURRENCY` key, which sits alongside
 `OPENWIKI_PROVIDER_RETRY_ATTEMPTS` in the managed list. LangChain
 project/tracing settings are managed but are not credentials, so they are
 excluded from the diagnostics panel via `NON_CREDENTIAL_ENV_KEYS`.
+
+The managed list groups keys by provider in file-write order. Each provider's
+credential key is followed by its optional base-URL override, so `COPILOT_API_KEY`
+(`COPILOT_API_KEY_ENV_KEY`) is immediately followed by `COPILOT_BASE_URL`
+(`COPILOT_BASE_URL_ENV_KEY`), and the OpenAI-compatible block runs
+`OPENAI_COMPATIBLE_API_KEY`, `OPENAI_COMPATIBLE_BASE_URL`,
+`OPENAI_COMPATIBLE_AUTH`, `OPENAI_COMPATIBLE_ENTRA_SCOPE`, then the streaming
+and Responses-API toggles — so the two Entra-ID settings are written between the
+base URL and the boolean toggles.
 
 ## Loading and precedence
 
@@ -184,6 +203,52 @@ Fireworks, Nebius, NVIDIA, then Bedrock access/secret keys) and falling back to
 `DEFAULT_PROVIDER` (`openai`). Each provider declares its own credential env
 variables and optional base-URL override in `PROVIDER_CONFIGS`; see
 [Model providers](../concepts/model-providers.md) for the full registry.
+
+### Copilot and the external-CLI credential
+
+The `copilot` provider authenticates through an external CLI (`authMethod:
+"external-cli"`, adapter `github-cli`) rather than a stored API key. At startup,
+`resolveExternalCliCredential` reuses a detected `gh auth token` session for the
+current process **only** — the CLI remains the source of truth, so its token is
+deliberately never written to `~/.openwiki/.env`. The reused token is seeded into
+`process.env[COPILOT_API_KEY]` only when that key is not already set, which lets
+`COPILOT_API_KEY` act as an explicit CI fallback: export it in a headless pipeline
+to bypass the CLI probe entirely. The `gh --hostname` flag is derived from
+`COPILOT_BASE_URL` so a GHE.com data-residency host authenticates against the
+correct GitHub instance. Because `providerRequiresApiKey` is false for
+`copilot`, the setup wizard collects it through the external-CLI-auth step rather
+than the API-key step. Copilot always forces the streaming HTTP transport, and
+routes GPT-5 model IDs through the Responses API (`responsesApi: /^gpt-5/u`).
+
+### OpenAI-compatible authentication modes
+
+The `openai-compatible` provider supports two authentication modes selected by
+`OPENAI_COMPATIBLE_AUTH` (`OPENAI_COMPATIBLE_AUTH_ENV_KEY`), resolved by
+`resolveOpenAICompatibleAuthMode`:
+
+- **`api-key`** (default when unset or blank) sends `OPENAI_COMPATIBLE_API_KEY`
+  as a bearer token — the classic gateway behavior.
+- **`entra-id`** delegates authentication to Azure Identity (`providerUsesEntraId`
+  returns true), so no API key is collected or required; the wizard skips the
+  API-key step for this mode. Authentication is then satisfied by `az login`,
+  managed identity, workload identity, or Azure environment credentials.
+
+An explicit value that is neither `api-key` nor `entra-id` **fails closed** —
+`resolveOpenAICompatibleAuthMode` throws, rather than silently defaulting. When
+`entra-id` is selected, `OPENAI_COMPATIBLE_ENTRA_SCOPE`
+(`OPENAI_COMPATIBLE_ENTRA_SCOPE_ENV_KEY`, resolved by
+`resolveOpenAICompatibleEntraScope`) sets the Microsoft Entra token scope
+requested from Azure Identity. Enterprise gateways normally use their own
+application ID URI; when unset it falls back to Azure OpenAI's Cognitive Services
+scope (`DEFAULT_OPENAI_COMPATIBLE_ENTRA_SCOPE`,
+`https://cognitiveservices.azure.com/.default`).
+
+Both keys are managed: the setup wizard persists them to `~/.openwiki/.env` only
+for the `openai-compatible` provider — `buildCredentialEnvUpdates` writes
+`OPENAI_COMPATIBLE_AUTH` when collected, and writes
+`OPENAI_COMPATIBLE_ENTRA_SCOPE` only when the mode is `entra-id` and a scope was
+collected. It also suppresses the API-key write entirely when the mode is
+`entra-id`, so an Entra run never leaves a stale key in the file.
 
 ### Token limits
 
@@ -309,11 +374,13 @@ for those models even though it is valid for OpenAI GPT-5.6.
 `process.env` value. Each entry reports its source — `process.env`, the env file
 path, "process.env over <file>" when both are set, or `unset` — and a
 masked preview. Non-secret settings (provider, model, token limits, page concurrency, retry
-attempts, base URLs, region, Google project/location, OpenRouter provider-only filter, and
-the boolean toggles, including `OPENWIKI_OPENAI_COMPATIBLE_STREAM_MESSAGES` and
+attempts, base URLs — including `COPILOT_BASE_URL` — region, Google project/location,
+OpenRouter provider-only filter, the Entra mode and scope
+(`OPENAI_COMPATIBLE_AUTH`, `OPENAI_COMPATIBLE_ENTRA_SCOPE`), and the boolean
+toggles, including `OPENWIKI_OPENAI_COMPATIBLE_STREAM_MESSAGES` and
 `OPENWIKI_OPENAI_COMPATIBLE_REASONING_EFFORT_SUPPORTED`) are shown verbatim;
-true secrets are previewed as a short masked fragment (or all-asterisks for short
-values).
+true secrets (such as `COPILOT_API_KEY`) are previewed as a short masked fragment
+(or all-asterisks for short values).
 
 Diagnostics surface per-key warnings through a dedicated validator per key:
 invalid provider, invalid model ID, invalid token limits (neutral, Bedrock, and
@@ -343,9 +410,16 @@ validators.
 `sanitizeDiagnosticText` is the security boundary for anything shown to the user
 or written to a log: every error message, header value, or provider response body
 that could contain a credential must pass through it first. It redacts (1) the
-exact values of secrets currently set in the environment, replacing each with
-`[REDACTED:<KEY>]`, and (2) anything matching known key/token shapes — OpenAI and
-OpenRouter `sk-…` keys, `Bearer …` headers, LangSmith `ls…` tokens, and the
+exact values of secrets currently set in the environment — every provider API key
+(`OPENAI_API_KEY`, `OPENAI_COMPATIBLE_API_KEY`, `ANTHROPIC_API_KEY`,
+`OPENROUTER_API_KEY`, `BASETEN_API_KEY`, `FIREWORKS_API_KEY`, `NEBIUS_API_KEY`,
+`NVIDIA_API_KEY`, `GEMINI_API_KEY`, and the Copilot key `COPILOT_API_KEY`), the
+AWS/Bedrock credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`AWS_SESSION_TOKEN`, the Bedrock-prefixed equivalents, the Bedrock bearer token,
+and the web-identity token file), the Entra-ID secrets `AZURE_CLIENT_SECRET` and
+`AZURE_CLIENT_CERTIFICATE_PASSWORD`, and `LANGSMITH_API_KEY` — replacing each
+with `[REDACTED:<KEY>]`, and (2) anything matching known key/token shapes — OpenAI
+and OpenRouter `sk-…` keys, `Bearer …` headers, LangSmith `ls…` tokens, and the
 "Incorrect API key provided: …" phrasing. `getErrorMessage` routes user-facing
 errors through this sanitizer (with a friendlier message for provider HTTP 500s).
 

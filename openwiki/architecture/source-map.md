@@ -24,6 +24,8 @@ sources:
     resource: repo://package.json
   - id: openwiki-source-f8b008ed89162a0e204fc02d
     resource: repo://src/agent/bob.ts
+  - id: openwiki-source-049f71d42424ecd8987d5e9f
+    resource: repo://src/agent/entra-auth.ts
   - id: openwiki-source-a953060a04ccefcf777de48e
     resource: repo://src/agent/index.ts
   - id: openwiki-source-8b316b2a9d744597bffd9c56
@@ -76,6 +78,10 @@ sources:
     resource: repo://src/integrations/core/retrieval-tools.ts
   - id: openwiki-source-58835b77ce38a0dd1fed8d09
     resource: repo://src/integrations/core/session-manager.ts
+  - id: openwiki-source-c194ba7f94bf86a83012a7b4
+    resource: repo://src/integrations/install/registry.ts
+  - id: openwiki-source-f8d9d540e042f0435d885368
+    resource: repo://src/integrations/install/types.ts
   - id: openwiki-source-eab9328975981f427c4218d0
     resource: repo://src/integrations/mcp/server.ts
   - id: openwiki-source-1324a62ac93d0625148b498e
@@ -86,14 +92,18 @@ sources:
     resource: repo://src/mermaid/validate.ts
   - id: openwiki-source-54432f9303757678a104d85f
     resource: repo://src/okf/frontmatter.ts
+  - id: openwiki-source-04a008dbe4969919f7141a55
+    resource: repo://src/platform/diagnostics.ts
   - id: openwiki-source-2f1e489d53c52a0582582659
     resource: repo://src/platform/fs-errors.ts
   - id: openwiki-source-c923e23504de7a6af7799a24
     resource: repo://src/scheduling/schedules.ts
+  - id: openwiki-source-c35800ddf00768a1fa848d13
+    resource: repo://src/setup/credentials/persistence.ts
   - id: openwiki-source-7388b63c6f928737a7109779
     resource: repo://src/setup/credentials/steps.ts
-  - id: openwiki-source-14d4f389b56575bb7afd1310
-    resource: repo://src/setup/onboarding.ts
+  - id: openwiki-source-7c7ce1305f8f14f43fec29de
+    resource: repo://src/setup/credentials/use-init-setup.ts
   - id: openwiki-source-a1d0931b37e6e9efdee37e97
     resource: repo://src/telemetry/index.ts
   - id: openwiki-source-d92f623adbf6b31c3542d58d
@@ -102,10 +112,10 @@ sources:
     resource: repo://src/visualize/server.ts
   - id: openwiki-source-d485c898eb60ebb173072eab
     resource: repo://test/agent/stream-redaction.test.ts
-generated: { by: "openwiki/0.6.1", at: "2026-10-02T08:09:47.640Z" }
+generated: { by: "openwiki/0.7.0", at: "2026-10-05T08:18:01.656Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T08:09:47.640Z
+  - by: openwiki/0.7.0
+    at: 2026-10-05T08:18:01.656Z
 ---
 
 # Source Map
@@ -165,7 +175,18 @@ before anything else.
   `resolveOpenAiCompatibleStreamMessages` (the
   `OPENAI_COMPATIBLE_STREAM_MESSAGES_ENV_KEY` resolver), which opts an
   `openai-compatible` endpoint back into LangGraph's `"messages"` stream mode.
-  It also resolves repository page-worker concurrency (`resolvePageConcurrency`,
+  It additionally owns the OpenAI-compatible authentication mode
+  (`OPENAI_COMPATIBLE_AUTH_ENV_KEY`/`OPENAI_COMPATIBLE_ENTRA_SCOPE_ENV_KEY`,
+  resolved by `resolveOpenAICompatibleAuthMode` — `api-key` vs `entra-id`,
+  failing closed on an invalid value — and `resolveOpenAICompatibleEntraScope`,
+  defaulting to Azure Cognitive Services' `https://cognitiveservices.azure.com/.default`)
+  and the Entra-aware provider predicates: `providerUsesEntraId` (true only for
+  `openai-compatible` in `entra-id` mode), `providerRequiresApiKey` (false when
+  Entra is in use, so the setup wizard skips the API-key step), and
+  `providerUsesStreaming` (which forces the streaming transport for the
+  `copilot` provider — like `openai-chatgpt`'s Codex backend, Copilot rejects
+  non-streaming requests — in addition to its existing `openai-compatible` and
+  `bob` handling). It also resolves repository page-worker concurrency (`resolvePageConcurrency`,
   clamping `OPENWIKI_PAGE_CONCURRENCY` between `DEFAULT_PAGE_CONCURRENCY` of 1
   and the `MAX_PAGE_CONCURRENCY` cap of 8) and the provider retry count
   (`resolveProviderRetryAttempts`, which raises the default from
@@ -226,7 +247,15 @@ six-operation lifecycle, but the runner owns a bounded page-worker pool and emit
 as MCP tools one operation at a time). `src/agent/types.ts` owns the
 `OpenWikiRunEvent` union consumed by the CLI, including
 `RepositoryGenerationProgressEvent` (with `stage`, `page`/`pageIndex`/`pageCount`,
-`completedCount`, and `inFlightPages` for the concurrent pool). `src/agent/utils.ts`
+`completedCount`, and `inFlightPages` for the concurrent pool). `src/agent/entra-auth.ts`
+is the Microsoft Entra ID token provider for `openai-compatible`: its
+`createEntraTokenProvider` lazily loads `@azure/identity` (preferring
+`WorkloadIdentityCredential` when `AZURE_FEDERATED_TOKEN_FILE` is set, else the
+default credential chain), validates the base URL is HTTPS without embedded
+credentials or a metadata host, and returns an OpenAI-SDK API-key callback that
+hands the model a refreshed bearer token on each request — wired into
+`createModel`'s `openai-compatible` branch when `providerUsesEntraId` is true.
+`src/agent/utils.ts`
 (run-context construction, content/source snapshots, and update-metadata
 persistence shared by the generation lifecycle), `src/agent/docs-only-backend.ts`
 (the sandboxed shell/filesystem backend), the OKF and translation middleware
@@ -438,21 +467,36 @@ their schedules, and power-management settings) and the home
 steps (`steps.ts`), persistence (`persistence.ts`), and formatting
 (`format.ts`), reading provider key/region/model requirements from
 `config/constants.ts` and the reasoning capability from `config/reasoning.ts`.
+For the `openai-compatible` provider the wizard inserts an `auth-mode` step
+(choosing `entra-id` vs `api-key`); `credentialStep`, `needsCredentialSetup`,
+and `orderedSetupSteps` all branch on the resolved auth mode, so Entra mode
+skips the API-key and secret steps and adds an `entra-scope` step instead, and
+`persistence.ts`'s `buildCredentialEnvUpdates` writes
+`OPENAI_COMPATIBLE_AUTH` and, under Entra, `OPENAI_COMPATIBLE_ENTRA_SCOPE`
+(omitting the API key when Entra is in use).
 
 ### config — environment, home directory, reasoning, and constants
 
 Owns runtime configuration. `src/config/constants.ts` is the central identifier
-registry (path constants, provider env keys — including the IBM Bob
-`BOB_API_KEY_ENV_KEY`/`BOB_BASE_URL_ENV_KEY`, the `bob` provider in the
-`OpenWikiProvider` union, and the `openai-compatible` streaming/responses-API
+registry (path constants, provider env keys — including the GitHub Copilot
+`COPILOT_API_KEY_ENV_KEY`/`COPILOT_BASE_URL_ENV_KEY`, the IBM Bob
+`BOB_API_KEY_ENV_KEY`/`BOB_BASE_URL_ENV_KEY`, the `copilot` and `bob` providers in
+the `OpenWikiProvider` union, the `openai-compatible` streaming/responses-API
 gates plus `OPENAI_COMPATIBLE_STREAM_MESSAGES_ENV_KEY` and
-`OPENAI_COMPATIBLE_REASONING_EFFORT_SUPPORTED_ENV_KEY` — provider defaults), and
-also owns the output-token resolution helpers
+`OPENAI_COMPATIBLE_REASONING_EFFORT_SUPPORTED_ENV_KEY`, and the Entra auth/scope
+keys `OPENAI_COMPATIBLE_AUTH_ENV_KEY`/`OPENAI_COMPATIBLE_ENTRA_SCOPE_ENV_KEY` —
+provider defaults), and also owns the output-token resolution helpers
 (`resolveConfiguredMaxOutputTokens`, `resolveBedrockMaxTokens`,
 `BEDROCK_DEFAULT_MAX_TOKENS`) plus `resolveOpenAiCompatibleReasoningEffortSupported`,
 `resolveOpenAiCompatibleStreamMessages`, and `providerUsesResponsesApi`, which
 gate reasoning effort, stream mode, and the responses API transport for
-`openai-compatible` providers; it also resolves page-worker concurrency
+`openai-compatible` providers; it also resolves the OpenAI-compatible
+authentication mode (`resolveOpenAICompatibleAuthMode`, `api-key` vs `entra-id`,
+and `resolveOpenAICompatibleEntraScope` defaulting to Azure Cognitive Services'
+scope) and the Entra-aware provider predicates `providerUsesEntraId` and
+`providerRequiresApiKey` (the latter skipping the key step under Entra), while
+`providerUsesStreaming` forces the streaming transport for `copilot` (as it does
+for `openai-chatgpt` and `bob`); it also resolves page-worker concurrency
 (`resolvePageConcurrency`, reading `OPENWIKI_PAGE_CONCURRENCY` between
 `DEFAULT_PAGE_CONCURRENCY` of 1 and the `MAX_PAGE_CONCURRENCY` cap of 8) and
 the provider retry count (`resolveProviderRetryAttempts`, which raises the
@@ -463,14 +507,19 @@ stream-idle watchdog (`resolveStreamIdleTimeout`, reading
 `OPENWIKI_STREAM_IDLE_TIMEOUT` via `resolveStreamIdleTimeoutForProvider`), and
 the LangSmith trace-thread id (`resolveTraceThreadId`, returning the
 `OPENWIKI_TRACE_THREAD_ID` override when set and non-empty else the durable
-`runId`, consumed by the native runner to group a run's planner and page
-workers into one thread). `env.ts`
+`runId`, consumed by the native runner — where `PLANNER_AGENT_NAME` names the
+planner trace and `workerAgentName(page)` names each page-worker trace — to
+group a run's planner and page workers into one thread). `env.ts`
 loads and saves the OpenWiki `.env` and
 is the single source of truth for the managed-keys list (`MANAGED_ENV_KEYS`,
-now including `BOB_API_KEY_ENV_KEY`, `BOB_BASE_URL_ENV_KEY`,
+now including `COPILOT_API_KEY_ENV_KEY`, `COPILOT_BASE_URL_ENV_KEY`,
+`BOB_API_KEY_ENV_KEY`, `BOB_BASE_URL_ENV_KEY`,
+`OPENAI_COMPATIBLE_AUTH_ENV_KEY`, `OPENAI_COMPATIBLE_ENTRA_SCOPE_ENV_KEY`,
 `OPENAI_COMPATIBLE_STREAM_MESSAGES_ENV_KEY`, and
 `OPENWIKI_OPENAI_COMPATIBLE_REASONING_EFFORT_SUPPORTED`), from which the
-credential-diagnostic and debug key lists derive; `openwiki-home.ts` resolves the
+credential-diagnostic and debug key lists derive, with
+`OPENAI_COMPATIBLE_AUTH_ENV_KEY`/`OPENAI_COMPATIBLE_ENTRA_SCOPE_ENV_KEY` treated
+as non-secret diagnostic keys; `openwiki-home.ts` resolves the
 home/wiki directories; `reasoning.ts` resolves reasoning settings, owning the
 three reasoning transports (`responses-reasoning`,
 `chat-completions-reasoning-effort`, `gemini-thinking-level`) and the
@@ -515,7 +564,8 @@ advertising an `INSTRUCTIONS` preamble that incorporates
 follows the same sparse-reconciliation standard as the native page-worker prompt
 (stdio in `stdio.ts`); `src/integrations/install/` handles host installation,
 with `registry.ts` (`HOST_TARGETS`) mapping supported host targets (bob, codex,
-claude, opencode, cursor, kiro, omp, antigravity) to their skill/MCP config
+claude, opencode, cursor, kiro, omp, antigravity, copilot — the
+`HostTargetId` union in `types.ts` mirrors this list) to their skill/MCP config
 locations.
 
 ### visualize — local graph viewer
@@ -542,8 +592,11 @@ error classification (`classifyError`, `tagErrorStage`), and the opt-out gates
 ### platform — OS and filesystem primitives
 
 Owns cross-platform helpers shared by other subsystems: `fs-errors.ts`
-(`isFileNotFoundError`), `diagnostics.ts` (secret redaction), `language.ts`
-(language resolution), `windows-acl.ts`, and `utils.ts`.
+(`isFileNotFoundError`), `diagnostics.ts` (secret redaction —
+`sanitizeDiagnosticText` redacts the live values of every provider API key,
+including `COPILOT_API_KEY`, plus known token shapes like `sk-…`, `Bearer …`,
+and LangSmith `ls…`), `language.ts` (language resolution), `windows-acl.ts`, and
+`utils.ts`.
 
 ### mermaid — diagram validation for generated pages
 

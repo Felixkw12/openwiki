@@ -11,8 +11,8 @@ tags:
   - filesystem-sandbox
   - langchain
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T08:09:47.640Z
+  - by: openwiki/0.7.0
+    at: 2026-10-05T08:18:01.656Z
 sources:
   - id: openwiki-source-0ad86abe7202c4e4d6897f34
     resource: repo://src/agent/agent-backend.ts
@@ -22,6 +22,8 @@ sources:
     resource: repo://src/agent/crash-guard.ts
   - id: openwiki-source-12c17ed8ca9c89ec61f28df7
     resource: repo://src/agent/docs-only-backend.ts
+  - id: openwiki-source-049f71d42424ecd8987d5e9f
+    resource: repo://src/agent/entra-auth.ts
   - id: openwiki-source-a953060a04ccefcf777de48e
     resource: repo://src/agent/index.ts
   - id: openwiki-source-6fd9c8ed42336141de43b3c2
@@ -34,6 +36,8 @@ sources:
     resource: repo://src/agent/translation-middleware.ts
   - id: openwiki-source-06902db4574f065a9a6ad95d
     resource: repo://src/agent/vertex-surface.ts
+  - id: openwiki-source-8a4d154074ac83bc638a4d89
+    resource: repo://src/auth/external-cli-auth.ts
   - id: openwiki-source-278e7e180eac811fc1a24f7a
     resource: repo://src/config/constants.ts
   - id: openwiki-source-f1dd0edb129e50f253618ff4
@@ -50,7 +54,7 @@ sources:
     resource: repo://test/agent/create-model.test.ts
   - id: openwiki-source-d485c898eb60ebb173072eab
     resource: repo://test/agent/stream-redaction.test.ts
-generated: { by: "openwiki/0.6.1", at: "2026-10-02T08:09:47.640Z" }
+generated: { by: "openwiki/0.7.0", at: "2026-10-05T08:18:01.656Z" }
 ---
 
 # Agent Runtime, Models, and Middleware
@@ -95,7 +99,7 @@ After model resolution, `resolveRunConfig` resolves four provider-neutral operat
 
 ## The provider matrix and model instantiation
 
-`createModel` maps the resolved provider and model id onto a concrete LangChain chat model. The provider enum spans direct API-key providers (`anthropic`, `openai`, `gemini`, the IBM `bob` inference gateway, plus OpenAI-compatible gateways `baseten`/`fireworks`/`nebius`/`nvidia`/`openai-compatible`), OAuth (`openai-chatgpt`, `copilot`), AWS-SDK (`bedrock`), a routing gateway (`openrouter`), and Google Vertex (`gemini-enterprise`).
+`createModel` maps the resolved provider and model id onto a concrete LangChain chat model. The provider enum spans direct API-key providers (`anthropic`, `openai`, `gemini`, the IBM `bob` inference gateway, plus OpenAI-compatible gateways `baseten`/`fireworks`/`nebius`/`nvidia`/`openai-compatible`), OAuth (`openai-chatgpt`), an external-CLI-auth provider (`copilot`, which reuses a GitHub CLI session via the `github-cli` adapter and targets `https://api.githubcopilot.com`), AWS-SDK (`bedrock`), a routing gateway (`openrouter`), and Google Vertex (`gemini-enterprise`).
 
 Each branch constructs a purpose-built client:
 
@@ -105,9 +109,9 @@ Each branch constructs a purpose-built client:
 - **ChatGPT OAuth** reuses `ChatOpenAI` against the Codex Responses backend with `useResponsesApi`, `zdrEnabled` (forcing `store: false`), forced streaming, and the account/originator/beta headers the Codex backend requires.
 - **OpenRouter** builds `ChatOpenRouter` against the OpenRouter base URL, optionally pinning an upstream provider allowlist; a legacy OpenRouter-specific output cap still takes precedence there over the provider-neutral cap.
 - **Bedrock** builds `ChatBedrockConverse` with the resolved AWS region, the resolved output-token cap (now always threaded as `maxTokensOptions` because Bedrock falls back to a default of 16,000 tokens rather than letting the Converse API cap at 4,096), and, when `OPENWIKI_STREAM_IDLE_TIMEOUT` is set, a stream idle-timeout watchdog that aborts a generation stalled waiting for its first or next chunk (0 disables it).
-- **Copilot** shares the `ChatOpenAI` fallthrough below, but `providerUsesStreaming` forces the streaming HTTP transport for every Copilot model: non-GPT-5 models (Claude, Gemini) are served over chat completions and reject or return empty responses for non-streaming requests, so without `streaming: true` a repository worker can exit without calling `submit_plan`/`submit_page`. The flag is redundant but harmless for GPT-5 models that use the Responses API, matching the `openai-chatgpt` pattern.
+- **Copilot** is an external-CLI-auth provider: its credential is not a pasted key but a GitHub CLI (`gh`) session, loaded for the current process only by `resolveExternalCliCredential` (which runs `gh auth token --hostname <host>` and writes the OAuth token into `COPILOT_API_KEY`, never persisting it to the env file). The provider targets `https://api.githubcopilot.com` (overridable via `COPILOT_BASE_URL`, whose hostname is also fed to `gh`'s `--hostname` flag so a GHE data-residency host authenticates against the right tenant), and `validateExternalCliCredential` rejects GitHub Personal Access Tokens (`ghp_`/`github_pat_`) because the Copilot API only accepts OAuth tokens. Copilot shares the `ChatOpenAI` fallthrough below, but `providerUsesStreaming` forces the streaming HTTP transport for every Copilot model: non-GPT-5 models (Claude, Gemini) are served over chat completions and reject or return empty responses for non-streaming requests, so without `streaming: true` a repository worker can exit without calling `submit_plan`/`submit_page`. GPT-5 models use the Responses API (`responsesApi: /^gpt-5/`), where the forced streaming flag is redundant but harmless, matching the `openai-chatgpt` pattern.
 - **IBM Bob** is a ChatOpenAI-over-chat-completions client against the Bob inference endpoint. Bob declares a single fixed model (`premium`) that `resolveModelId` returns unconditionally via `getProviderFixedModel`, so no model id is ever configured for it. Because Bob authenticates with an `Apikey` scheme and requires a registered User-Agent, the branch passes a placeholder API key to satisfy `ChatOpenAI`'s constructor and injects the real key per request through a `createBobFetch` fetch adapter that rewrites the `Authorization` header to `Apikey <key>` (read from the environment at call time) and sets `User-Agent: ibm-bob-openwiki-provider`, which Bob's Cloudflare WAF requires.
-- **OpenAI and all OpenAI-compatible gateways** fall through to a shared `ChatOpenAI` branch that honors a per-provider base URL, chooses the Responses API when the provider config asks for it, and forces the streaming HTTP transport for gateways that only serve SSE.
+- **OpenAI and all OpenAI-compatible gateways** fall through to a shared `ChatOpenAI` branch that honors a per-provider base URL, chooses the Responses API when the provider config asks for it, and forces the streaming HTTP transport for gateways that only serve SSE. The branch also carries the Entra ID sub-mode of `openai-compatible`: when `providerUsesEntraId` is true (`OPENAI_COMPATIBLE_AUTH=entra-id`), the `apiKey` is not a static key but the callback returned by `createEntraTokenProvider(baseURL, resolveOpenAICompatibleEntraScope())`, so the OpenAI SDK fetches a refreshed Microsoft Entra ID access token per request and a long-running model survives token expiry without reconstruction.
 
 The provider-neutral output limit is the single `OPENWIKI_MAX_OUTPUT_TOKENS` setting: because a run constructs only one model, one value is mapped to each SDK's field name (`maxTokens` for OpenAI/Anthropic/MaaS/Bedrock, `maxOutputTokens` for Gemini), with OpenRouter's older `OPENWIKI_OPENROUTER_MAX_TOKENS` cap retained for backward compatibility and taking precedence on OpenRouter runs. When unset the limit is omitted so the provider default applies — except for Bedrock, where `resolveConfiguredMaxOutputTokens` falls back to `resolveBedrockMaxTokens` (default `BEDROCK_DEFAULT_MAX_TOKENS` = 16,000, overridable via `OPENWIKI_BEDROCK_MAX_TOKENS`) so the Converse API no longer truncates at its built-in 4,096-token ceiling; Anthropic's modern-Claude default is a separate, Anthropic-only behavior.
 
@@ -128,6 +132,14 @@ The `openai-compatible` provider has no static entry: its capability is gated by
 ### Vertex surface routing
 
 For `gemini-enterprise`, the API surface is a function of the model id, not the provider: `resolveVertexSurface` classifies an id as `anthropic`, `openai-maas`, or (default) `gemini`. IDs matching the Anthropic pattern (`anthropic`/`claude` family, whether bare or publisher-pathed) route to the Anthropic Vertex surface; IDs matching the MaaS pattern — including the `xai`/`grok` family in addition to `ai21`, `codellama`, `codestral`, `deepseek`, `jamba`, `llama`/`meta`, `mistral`, and `qwen` — route to the OpenAI-compatible MaaS surface; everything else defaults to native Gemini/Gemma. The Claude-on-Vertex bridge neutralizes any ambient `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` around the synchronous `AnthropicVertex` constructor so a stray native Anthropic key cannot clobber the Google OAuth token, and the MaaS surface injects a fresh ADC bearer token per request via a `fetch` wrapper so long sessions survive token expiry while `createModel` stays synchronous.
+
+### Entra ID authentication for OpenAI-compatible gateways
+
+The `openai-compatible` provider has an opt-in authentication sub-mode controlled by `OPENAI_COMPATIBLE_AUTH`: the default (`api-key` or unset) uses a static key, while `entra-id` delegates authentication to Microsoft Entra ID (Azure Identity) instead. This sub-mode is orthogonal to the Responses-API and streaming-transport toggles — it only changes how the `Authorization` header is sourced.
+
+`providerUsesEntraId` returns true only for `openai-compatible` when the mode resolves to `entra-id`, and in that case the final `ChatOpenAI` branch in `createModel` substitutes the static `apiKey` with the callback from `createEntraTokenProvider(baseURL, resolveOpenAICompatibleEntraScope())`. The OpenAI SDK invokes that callback for each request, so Azure Identity can refresh the bearer token before it expires and a long-running model never needs reconstruction — the same "synchronous constructor, renewable per-request credential" pattern the Vertex MaaS surface uses. The scope defaults to the Azure Cognitive Services scope (`https://cognitiveservices.azure.com/.default`) but is overridable via `OPENAI_COMPATIBLE_ENTRA_SCOPE` for enterprise gateways that use their own application ID URI.
+
+The token provider (`src/agent/entra-auth.ts`) is deliberately lazy and defensive: `@azure/identity` is imported only when the callback is first invoked, and a `tokenProvider` promise memo coalesces concurrent first requests so the credential chain is constructed once. A configured `AZURE_FEDERATED_TOKEN_FILE` selects `WorkloadIdentityCredential` (using `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`); otherwise the `DefaultAzureCredential` chain is used. Before building anything it validates the configured base URL is HTTPS and carries no embedded credentials, and rejects the cloud-instance metadata hosts (`169.254.169.254`, `metadata.google.internal`) so an ambient metadata service cannot be silently targeted. Any failure — import, construction, or token acquisition — is wrapped in a single generic message that names the relevant environment variables but never surfaces the original error, because Azure Identity errors can contain response details and credential material. A failed import resets the memoized provider so a later retry is not poisoned.
 
 ## Building the agent graph
 

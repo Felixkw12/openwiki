@@ -24,16 +24,18 @@ sources:
     resource: repo://src/cli/schedule-format.ts
   - id: openwiki-source-d80f123259efa4712b198b63
     resource: repo://src/cli/startup.ts
+  - id: openwiki-source-c194ba7f94bf86a83012a7b4
+    resource: repo://src/integrations/install/registry.ts
   - id: openwiki-source-04a008dbe4969919f7141a55
     resource: repo://src/platform/diagnostics.ts
   - id: openwiki-source-349c953869b025f9d4935470
     resource: repo://src/platform/language.ts
   - id: openwiki-source-f5f9f9512cc2874a9127f6e1
     resource: repo://test/cli/diagnostics/error-diagnostics.test.ts
-generated: { by: "openwiki/0.5.2", at: "2026-09-23T08:09:37.122Z" }
+generated: { by: "openwiki/0.7.0", at: "2026-10-05T08:18:01.656Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-09-30T08:10:27.967Z
+  - by: openwiki/0.7.0
+    at: 2026-10-05T08:18:01.656Z
 ---
 
 # CLI Commands and Flags
@@ -156,9 +158,12 @@ instance, the panel additionally includes the error `name`, a sanitized
 `message`, an inline HTTP status extracted from the message
 (`httpStatusFromMessage`, the first 4xx/5xx value), and a `stack` diagnostic.
 The stack is sanitized via `sanitizeDiagnosticText` — which redacts the live
-values of secret-bearing environment variables and bearer-token / known provider
-key patterns such as `sk-or-v1-…` — and truncated to 2,000 characters with a
-trailing `...` so a long trace cannot flood the terminal. Debug mode also widens
+values of secret-bearing environment variables (the provider API keys, including
+`COPILOT_API_KEY` alongside OpenAI, OpenRouter, Anthropic, Gemini, Fireworks,
+Nebius, NVIDIA, and Baseten, plus the AWS Bedrock, Azure client, and LangSmith
+credential set) and bearer-token / known key patterns such as `sk-or-v1-…` — and
+truncated to 2,000 characters with a trailing `...` so a long trace cannot flood
+the terminal. Debug mode also widens
 the walk to nested `cause`/`error`/`response` objects and other allowlisted
 fields; the final list is deduped by `label:value`.
 
@@ -209,8 +214,11 @@ Any other form is a parse error
 `parseIntegrationsCommand` and executed by `runIntegrationsCommand`. `install`
 and `uninstall` require a host target validated against the installation
 registry (`getHostTarget`/`listHostTargets`); `list` takes no target and reports
-each registered host's status. Scope defaults to `user` (installing into the home
-directory) and switches to `project` when `--project` is supplied, with either an
+each registered host's status. The registry accepts `copilot` (GitHub Copilot
+CLI) as a target id alongside `bob`, `codex`, `claude`, `opencode`, `cursor`,
+`kiro`, `omp`, and `antigravity`, so `openwiki integrations install copilot`,
+`uninstall copilot`, and `list` (which reports copilot's status) are all valid.
+Scope defaults to `user` (installing into the home directory) and switches to `project` when `--project` is supplied, with either an
 explicit path (`--project <path>` or `--project=<path>`) or the current directory
 (`--project` alone defaults to `.`). `--force` is accepted only for `install`
 (allowing replacement of unmanaged skill content) and may appear at most once, as

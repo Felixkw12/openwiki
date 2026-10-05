@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:cda467eee27aca51219ecb83804ef98f0067bcbd6bb40678398ad8ed34081f12",
+  "pageVersion": "sha256:cd5d21d9ccc3b233f44df3c307a401cb5eae83a5efe6e8a4d573e71fa4977764",
   "claims": [
     {
       "id": "claim_e161d3153b544232b9f17aa2f2838616",
@@ -486,7 +486,7 @@
     },
     {
       "id": "claim_9dc5b258668e4fa9ac130bd5d2c72089",
-      "statement": "The stack diagnostic is sanitized via sanitizeDiagnosticText (which redacts live secret-bearing environment-variable values and bearer-token / known provider key patterns such as sk-or-v1-…) and truncated to 2,000 characters with a trailing ellipsis so a long trace cannot flood the terminal.",
+      "statement": "The stack diagnostic is sanitized via sanitizeDiagnosticText (which redacts live secret-bearing environment-variable values — including COPILOT_API_KEY alongside the other provider API keys such as OpenAI/OpenRouter/Anthropic/Gemini/Fireworks/Nebius/NVIDIA/Baseten and the AWS Bedrock/Azure/LangSmith credential set — and bearer-token / known provider key patterns such as sk-or-v1-…) and truncated to 2,000 characters with a trailing ellipsis so a long trace cannot flood the terminal.",
       "evidence": [
         {
           "resource": "repo://src/cli/diagnostics/error-diagnostics.ts#L290-L299",
@@ -497,8 +497,8 @@
           "version": "repo-lines-v1:sha256:381fcc821b9b3de34941420b8aae05968fc3e66f158085ed4b742fda38233919:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiOWU5MDFiN2I5YTdjYjMxOGNmZDc4MGYxOWYxZjE3ODExNDRkZWFhZWFlNjNhYmNkYmM2OGIxMmM0ZThjZWUwNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDg5M2Y0MGUzNzgxZWI4OTZjODJkMDQ2YTA4MDY3YTExZTM1Y2RmMmYxZGZhZjI2ZmVhOTBiOGRiNjY3NjQxMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjc0NWUwZTFhODU4MmU1Nzc2MjJmODdiNGRiNDdmMjNiZDJiM2VmYWUxYTdhY2M3N2Q2NWNkNGMxNTg2N2FiNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmE2ZjMxNzgyN2I1MjEyMTZkNGI4NWI5ODNjZjVmMDhjZTZmYTg3YjdlMDI2NDNjNTEyYzkzNmRiNDVmZmVmNSJ9"
         },
         {
-          "resource": "repo://src/platform/diagnostics.ts#L31-L71",
-          "version": "repo-lines-v1:sha256:e1332e25bb94126cf237c3f8846c0eaaa54016d950358e8a0166c8499867ad0c:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkMDc5MTRmNWVlYjI0Mjc0NTI5NmU2ODIwM2RjMDkzOGY1Zjc0ODkwNzcwNDQ2MzYyNTMzZTk2OGNmZjBiMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxMmNhMzQ1Y2NmNzViZjljMDgwNmJjZTY5NWJlOGRlODA4Yjc5OTg0MjUxYTdhNTRkMjAyY2Y2MTAxZGQ0NTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwOGQyMzFkMDRiMmVhMzg0NThiMmYzZTY1NzIwYmVhNmM1NTU1MTczOGI3NzA4YWRlOTI4YjUzOTBmZWU4MTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjkxOGVhOWRiYzhlMDdlZjZlMmEwNDY3MTY3OTY1YzJjMDVjYzJhZDk1YWFjZWRiYzVjMjcyNGM4MGNkNGRkNTIifQ"
+          "resource": "repo://src/platform/diagnostics.ts#L31-L62",
+          "version": "repo-lines-v1:sha256:cd9f1f4f3d40600ff0d96dfa5832b59a3732379a5daedc5b34128a9375bf1658:eyJzZWxlY3RlZExpbmVDb3VudCI6MzIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJkMDc5MTRmNWVlYjI0Mjc0NTI5NmU2ODIwM2RjMDkzOGY1Zjc0ODkwNzcwNDQ2MzYyNTMzZTk2OGNmZjBiMGMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjAwOGQyMzFkMDRiMmVhMzg0NThiMmYzZTY1NzIwYmVhNmM1NTU1MTczOGI3NzA4YWRlOTI4YjUzOTBmZWU4MTgiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImU4YTA1ZjY4NTgyMWUyYzFjZDYyN2JjOTZlN2U5NDBhNmExMWI1OWI4Y2ZjNDQ5MjQzZTg5NjIyMDIwYjc1YzQifQ"
         },
         {
           "resource": "repo://test/cli/diagnostics/error-diagnostics.test.ts#L55-L65",
@@ -555,10 +555,28 @@
           "version": "repo-lines-v1:sha256:a0a5077be4d04d8c2ac93022531fb1e90a719007b59d86865139a2cffc14854d:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDIzZjJlMTViNGE1MjZkOTI2ODkzNTNiODBlNzFlNjU5OWNlN2QwYTRlYzE0YzBlOTM1OTJmMDZjZmUwMTExZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDEyY2EzNDVjY2Y3NWJmOWMwODA2YmNlNjk1YmU4ZGU4MDhiNzk5ODQyNTFhN2E1NGQyMDJjZjYxMDFkZDQ1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWE4NTYzZTkyNTA5MWRiNGYyM2ZiYjg2ZTZiM2NhODZmZTMwZDAwMjk2Zjk5YjI3NzE1YzAwODZhMmFkZDk0MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYWMxZGQwZmY4OWUxYTlhN2UzZTEyN2VlMDkzZWU3YTNiYmRjM2Y2MDJiZTlkMGU4MzU3ZjVhNjk4ZWRlM2EwNSJ9"
         }
       ]
+    },
+    {
+      "id": "claim_53526e0d4f9e4900982ec37a1ed660c2",
+      "statement": "The integrations host target registry (HOST_TARGETS) accepts copilot (GitHub Copilot CLI) as an install/uninstall/list target id alongside bob, codex, claude, opencode, cursor, kiro, omp, and antigravity, so openwiki integrations install/uninstall copilot and copilot's status in list are all valid.",
+      "evidence": [
+        {
+          "resource": "repo://src/cli/commands.ts#L634-L661",
+          "version": "repo-lines-v1:sha256:d5f7e7b99e858c88fe533f4cbc8604350e28e10128bb616d1bf9e12599c2cc7d:eyJzZWxlY3RlZExpbmVDb3VudCI6MjgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzZjdlNTNmMTVlNjNiYmJkZjMwNjBlODk1YWZhZWM2YThhNGMyZjM4ZjY3ZTU0MTJiYTQ2ZWU3MzY5YzY0YzIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjI3ZTU3ODhkNWQ5ZDczZDI0YTgxZGJjMGE1YTc0YmZhODJjOWMzYjNhZjk5ZTUyYWY3OTZlOTBiNDY4YThhM2QiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkMDQyNjVkMzlmZmJiMWMwMzAxNWZmNDljMjU2YmU3MjQwZWIzYTcwMDJhNjcwYTc5YjZmODk0ZTRlNWE0YmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjY3MmIwNTIyMzM4YjI5ODIyNDc0ZmJhODdlNTUyNDMwZGU4MWE4ODdhZTkwYWU0MjY1M2M0Y2JhMzU4ZWEyZGYifQ"
+        },
+        {
+          "resource": "repo://src/integrations/install/registry.ts#L10-L157",
+          "version": "repo-lines-v1:sha256:e14e85b492de74b7036f7b71c87b0c236cbe8b696642489791ed4b37e22f5f3c:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQ4LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0N2VkZjNmYWU5ZGVkMDdjYTQzYTQwNGY0MDJlNDE1OWQ1NzY0ODU4MWE1YmExZmIwMDcwN2RiZTI2Y2U2NDU5IiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIxYjdjODc4MzA3YWIwN2YzYTMyYWY0ZTViMjQzMWVlYmRjNzNkZWQzNmE3NjU5MTdiOTJmNTRmYWJkYzY0YTQ5IiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiIzNDBmNjMwMzQ1MjgwOTU2ZWRkYWRjNjIxMzUzYTMxNjU1YzIwZmExZTY3ODgwMzk0MzAyNDg4OTYyOTcwY2UzIiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJjNDkzMDc0ZDA4YzQ2NzdhMTZiMzlkZjUyZDc1ZGU0ZmE4Mjc5OGVhYzVlZTFhMGE4ZWViMzkxMmViYTI5ZDAxIn0"
+        },
+        {
+          "resource": "repo://src/integrations/install/registry.ts#L142-L156",
+          "version": "repo-lines-v1:sha256:c0c1b74a86b84f50ba9c19bf178917f1949039aff1f596c642df5739b7a48aa2:eyJzZWxlY3RlZExpbmVDb3VudCI6MTUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQyNTU3ZDc1MzdlY2RkZTYyZGRkMmUyYmNmYTM3NTA2NDRmMThhNTdhMWMxYjRjNWU1N2QyYWIwYzE2YWZhNGIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjRkNWNkMmZiNGYzZGY4ODQ1MTUyNTViMzk1MjNmMmY4YjU0NzJiZWVhOWY1NjZmZmNhMjA0ZGI4MDI1NjEwNDEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijk3MWQyYjExOGUzYjQ0ZTBkMzM0MTI3OGM1MWQ2YWM1NjE3ODk4YzU4ZmU2N2RiODcyOGFkNTJhM2RhZjE1YTciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZhOWNiOWM4MDUzZGFkZDA3MDA0NjQyODBhNGUwMTY1MDFkZmU1ZTkyYjhlN2IzMGJiMWJkYzk4OTQ1NjQ1ODQifQ"
+        }
+      ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.6.1",
-    "at": "2026-09-30T08:10:27.967Z"
+    "by": "openwiki/0.7.0",
+    "at": "2026-10-05T08:18:01.656Z"
   }
 }

@@ -44,10 +44,10 @@ sources:
     resource: repo://test/agent/repository-runner.test.ts
   - id: openwiki-source-77febf5d49f26cc2405db8dd
     resource: repo://test/generation/repository-run.test.ts
-generated: { by: "openwiki/0.6.1", at: "2026-10-02T08:09:47.640Z" }
+generated: { by: "openwiki/0.7.0", at: "2026-10-05T08:18:01.656Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T08:09:47.640Z
+  - by: openwiki/0.7.0
+    at: 2026-10-05T08:18:01.656Z
 ---
 
 # Repository Generation Lifecycle
@@ -664,7 +664,8 @@ injects the sparse-Claim reconciliation guidance, and requires
 
 ### Shared LangSmith trace thread
 
-Every planner and page worker in one run groups into a single LangSmith thread.
+Added in 0.7.0, every planner and page worker in one run groups into a single
+LangSmith thread so their separate traces read as one run.
 The planner agent is created with the name `PLANNER_AGENT_NAME`
 (`"planning agent"`), and each page worker is created with
 `workerAgentName(job.path)` — a human-readable name derived from the page it

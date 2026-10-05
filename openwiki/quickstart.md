@@ -30,16 +30,14 @@ sources:
     resource: repo://src/generation/repository-run.ts
   - id: openwiki-source-080c4525024a9b689e361cbb
     resource: repo://src/generation/run-state.ts
-  - id: openwiki-source-410e7efbe6dee8c4d43e9b4d
-    resource: repo://src/integrations/core/protocol.ts
   - id: openwiki-source-c194ba7f94bf86a83012a7b4
     resource: repo://src/integrations/install/registry.ts
   - id: openwiki-source-349c953869b025f9d4935470
     resource: repo://src/platform/language.ts
-generated: { by: "openwiki/0.6.1", at: "2026-10-02T08:09:47.640Z" }
+generated: { by: "openwiki/0.7.0", at: "2026-10-05T08:18:01.656Z" }
 verified:
-  - by: openwiki/0.6.1
-    at: 2026-10-02T08:09:47.640Z
+  - by: openwiki/0.7.0
+    at: 2026-10-05T08:18:01.656Z
 ---
 
 # OpenWiki Quickstart
@@ -55,12 +53,21 @@ matches your task. Read this first, then follow the links below.
 
 ## What OpenWiki is
 
-OpenWiki is published as the `openwiki` npm package (v0.6.1), a Node.js
+OpenWiki is published as the `openwiki` npm package (v0.7.0), a Node.js
 (>=22.22.0) CLI whose binary resolves to `dist/cli/cli.js`. Its purpose, per the
 package manifest, is "a CLI that uses a DeepAgents documentation agent to
 generate and maintain an OpenWiki for a codebase." The runtime is a DeepAgents
 documentation agent driven by one of fourteen model providers, wrapped by a CLI
 that can run interactively (an Ink TUI) or one-shot (print mode).
+
+> **Notable provider change (v0.7.0):** the `openai-compatible` provider now
+> supports a Microsoft Entra ID authentication mode alongside API keys. Set
+> `OPENAI_COMPATIBLE_AUTH=entra-id` to delegate authentication to Azure Identity
+> (the token scope defaults to Azure OpenAI's Cognitive Services scope, or
+> override it with `OPENAI_COMPATIBLE_ENTRA_SCOPE` for an enterprise gateway).
+> See [Model Providers and Credentials](./concepts/model-providers.md) and
+> [Configuration and Environment](./operations/configuration.md) for the full
+> env-key reference and credential persistence.
 
 The CLI has two operating modes:
 
@@ -187,7 +194,7 @@ the canonical wiki pages; each one links into the deeper source map.
 
 | I want to…                                                                  | Read                                             |
 | --------------------------------------------------------------------------- | ------------------------------------------------ |
-| Run OpenWiki inside IBM Bob, Codex, Claude Code, OpenCode, Cursor, Kiro, Oh My Pi, or Antigravity CLI | [Coding-Agent Integrations](./integrations/coding-agents.md) |
+| Run OpenWiki inside IBM Bob, Codex, Claude Code, OpenCode, Cursor, Kiro, Oh My Pi, Antigravity CLI, or GitHub Copilot CLI | [Coding-Agent Integrations](./integrations/coding-agents.md) |
 | Understand the built-in source connectors, the ConnectorRuntime contract, and how to add a new one | [Source Connectors](./integrations/connectors.md) |
 | Explore the interactive graph visualizer (live server and static export)    | [Interactive Visualizer](./integrations/visualizer.md) |
 
@@ -250,8 +257,9 @@ follow-up `openwiki --update` to reconcile the drift.
 ## Host-driven generation
 
 OpenWiki can also run inside a host coding agent — IBM Bob, Codex, Claude Code,
-OpenCode, Cursor, Kiro, Oh My Pi (`omp`), or Antigravity CLI (`antigravity`) —
-instead of launching its own model. The integration shares one canonical skill
+OpenCode, Cursor, Kiro, Oh My Pi (`omp`), Antigravity CLI (`antigravity`), or
+GitHub Copilot CLI (`copilot`) — instead of launching its own model. The
+integration shares one canonical skill
 and the same six MCP operations as native generation:
 `openwiki_begin`, `openwiki_submit_plan`, `openwiki_next_page`, optional on-demand
 `openwiki_inspect_page_claims`, `openwiki_submit_page`, and `openwiki_finish`. The
@@ -267,3 +275,4 @@ automatically retains current issue-free Claims and makes the full Claim set
 available through on-demand `openwiki_inspect_page_claims` for broad rewrites.
 See [Coding-Agent Integrations](./integrations/coding-agents.md) for
 install scope, the host registry, and the host-driven lifecycle boundary.
+e boundary.
